@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style type="text/css">
+        .imgbox {
+            border: 3px solid #eee;
+            position: relative;
+            overflow:hidden;
+            width:300px;
+            height:300px;
+            //border-radius:50%;
+        }
+        .imgbox > img {
+            position:absolute;
+            left:50%;
+            bottom:50%;
+            width:50%;
+            clip-path: url(#clip);
+        }
+
+    </style>
+    <script type="text/javascript" src="knockout-3.2.0.js"></script>
+</head>
+<body>
+    <div data-bind="foreach: images" class="imgbox">
+        <img  data-bind="attr:{src: source}, style: { transform: cssTransform,
+        transformOrigin: $parent.origin, bottom: $parent.bottomPos, left:
+        $parent.leftPos }" alt="">
+    </div>
+    <div data-bind="text: svgPath()"></div>
+    <svg width="0" height="0">
+        <defs>
+            <clipPath id="clip" clipPathUnits="objectBoundingBox">
+
+                <!--laate is x: sin(graden), y=1- cos(graden)-->
+
+                <!--<path d="M0 0 V 1 L0.5878 0.198z "/>-->
+                <!--<path d="H1 1 A 1 1 0 0 0 0.5878 0.198 L 0 1z" />-->
+ <!--<path d="M0.5878 0.198-->
+           <!--A 1 1, 0, 0, 0, 0 0-->
+           <!--L 0 1 Z"/>-->
+
+           <path data-bind="attr:{d: svgPath()}"/>
+            </clipPath>
+        </defs>
+    </svg>
+    <input step="5" type="number" value="0" data-bind="value: angleOffset" >
+    <div style="border:1px solid black">
+        <img src="theezakje_top.jpg" style="clip-path: url(#clip)">
+    </div>
+    <script type="text/javascript">
+        // Converts from degrees to radians.
+        Math.radians = function(degrees) {
+        return degrees * Math.PI / 180;
+        };
+
+        // Converts from radians to degrees.
+        Math.degrees = function(radians) {
+        return radians * 180 / Math.PI;
+        };
+        function Image(src,rot,rotOffset) {
+            var self = this;
+            self.source =src;
+            self.rotation = rot;
+            self.rotOffset = rotOffset;
+
+            self.cssTransform = ko.computed(function() {
+                return 'rotate(' + (self.rotation - self.rotOffset()) + 'deg)';
+            });
+        }
+        function ImagesViewModel() {
+            var self = this;
+            var numImgs=8;
+            self.ratio = 218/79;
+           self.src = "initial.jpg";
+            self.angleOffset = ko.observable(0);
+            self.originX = ko.observable(0);
+            self.originY = ko.observable(1);
+            self.bottomPos = ko.computed(function() {
+                return (self.originY() / 2 * 100) + "%";
+            });
+            self.leftPos = ko.computed(function() {
+                return (50 - self.originX() / 2 * 100 ) + "%";
+            });
+
+            self.images = ko.observableArray([ ]);
+            for(i=0; i< numImgs; i++)
+                self.images.push(new Image(self.src,360/numImgs*i,
+                                           self.angleOffset));
+
+            self.origin = ko.computed(function() {
+                var a=  ""+self.originX()*100 +"% "+self.originY()*100+"%";
+                return a;
+            });
+
+            self.svgPath = ko.computed(function() {
+                <!--console.log("Update");-->
+                radOffset = Math.radians(self.angleOffset());
+
+                radPerImg = Math.PI*2 / numImgs;
+                beginX = Math.sin(radOffset)/self.ratio;
+                beginY = 1- Math.cos(radOffset);
+                endX = Math.sin(radPerImg+ radOffset)/self.ratio;
+                endY = 1-Math.cos(radPerImg + radOffset);
+                function correction(x) {
+                    if(x > 1) { 
+                        return 1-x;
+                    } else if (x < 0) {
+                        return -x;
+                    } else {
+                        return 0;
+                    }
+                }
+                function largest(a,b) {
+                    if(Math.abs(a) > Math.abs(b)) {
+                        return a;
+                    } else {
+                        return b;
+                    }
+                }
+
+                correctionY = largest(correction(endY), correction(beginY));
+                correctionX = largest(correction(endX), correction(beginX));
+                <!--console.log("Orig begin X", beginX);-->
+                <!--console.log("Orig begin Y", beginY);-->
+                <!--console.log("Orig end X", endX);-->
+                <!--console.log("Orig end Y", endY);-->
+                <!--console.log("Correction X", correctionX);-->
+                <!--console.log("Correction Y", correctionY);-->
+                beginX += correctionX;
+                beginY += correctionY;
+                endX += correctionX;
+                endY += correctionY;
+                pointX = 0 + correctionX;
+                pointY = 1 + correctionY;
+                <!--console.log("Corr begin X", beginX);-->
+                <!--console.log("Corr begin Y", beginY);-->
+                <!--console.log("Corr end X", endX);-->
+                <!--console.log("Corr end Y", endY);-->
+                <!--console.log("Point X", pointX);-->
+                <!--console.log("Point Y", pointY);-->
+                self.originX(pointX);
+                self.originY(pointY);
+
+                return "M"+beginX+" "+beginY+" A 1 1,0 ,0,1, "
+                    +endX+ " " + endY + " L" + pointX +" " + pointY + "z";
+                //equiv:
+                return "M0 0 A 1 1,0 ,0,1, " + endX + " " + endY + " L 0 1z";
+                return "M1 1 A 1 1,0 ,1,1, " + endX + " " + endY + " L 0 1z";
+
+                return "M1 1 A 1 1,0 ,0,0, " + endX + " " + endY + " L 0 1z";
+            });
+        }
+        ko.applyBindings(new ImagesViewModel());
+    </script> 
+
+</body>
+</html>

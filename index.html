@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script type="text/javascript" src="svg.js"></script>
+    <script type="text/javascript" src="svg.export.js"></script>
+    <script type="text/javascript" src="svg.filter.js"></script>
+    <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bootstrap/css/bootstrap-theme.css" rel="stylesheet">
+    <script type="text/javascript" src="knockout-3.2.0.js"></script>
+    <script type="text/javascript" src="FileSaver.js"></script>
+    <script src="jquery-2.1.3.js"></script>
+    <script src="bootstrap/js/bootstrap.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+        .sidebar-module {
+        padding: 15px;
+        margin: 0 -15px 15px;
+        }
+        .sidebar-module-inset {
+        padding: 15px;
+        background-color: #4b4b4b;
+        border-radius: 4px;
+        box-shadow: 3px 3px 3px 1px #1e1e1e;
+        }
+        .sidebar-module-inset p:last-child,
+        .sidebar-module-inset ul:last-child,
+        .sidebar-module-inset ol:last-child {
+        margin-bottom: 0;
+        }
+        .sidebar-module > h4 {
+            margin-top:0px;
+        }
+        #drawing > svg {
+            border: 2px green solid;
+        }
+        #selectedAreaWindow {
+            border: 3px solid #191919;
+            background-color: #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>&nbsp;</h1>
+        <div class="row">
+            <div id="circle" class="col-sm-9"></div>
+            <div class="col-sm-3">
+                <div class="sidebar-module sidebar-module-inset">
+                    <h4>Parameters</h4>
+                    <form role="form">
+                        <div class="form-group">
+                            <label for="fileUpload">Image file</label>
+                             <!-- thank you knockout for letting me do this-->
+                            <input type="file" id="fileUpload" accept="image/*"
+                                data-bind="event: {change: function(){ onFileChosen($element.files[0])}}"/>
+                        </div>
+                        <div class="form-group">
+                            <label for="angleInput">Angle offset</label>
+                            <input type="number" data-bind="value: angleOffset" class="form-control" step="10" id="angleInput">
+                        </div>
+                        <div class="form-group">
+                            <label for="slicesInput">Slices</label>
+                            <input type="number" data-bind="value: slices" class="form-control" id="slicesInput" max="500" min="4">
+                        </div>
+                        <div class="form-group">
+                            <label for="zoomInput">Zoom</label>
+                            <input type="number" data-bind="value: zoom"
+                            class="form-control" id="zoomInput" step="0.1"
+                            min="0.1" />
+                        </div>
+                        <div class="form-group">
+                            <label>Offset</label><br>
+                            <input style="width:49%;float:left" type="number"
+                            data-bind="value: offsetX" class="form-control"
+                            step="0.01" />
+                            <input style="width:49%;float:left" type="number"
+                            data-bind="value: offsetY" class="form-control"
+                            step="0.01" /><br>
+                        </div>
+                        <div id="selectedAreaBlock" class="form-group">
+                            <label for="selectedAreaWindow">Selected area</label>
+                            <div id="selectedAreaWindow"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="sidebar-module">
+                    <button type="button" class="btn btn-default btn-block" data-bind="click: download">
+                        <span class="glyphicon glyphicon-download"></span>
+                        &nbsp;Download as SVG
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var selectedAreaBlockEnabled = false;
+
+        if(!selectedAreaBlockEnabled)
+            $("#selectedAreaBlock").hide();
+        // Converts from degrees to radians.
+        Math.radians = function(degrees) {
+        return degrees * Math.PI / 180;
+        };
+
+        // Converts from radians to degrees.
+        Math.degrees = function(radians) {
+        return radians * 180 / Math.PI;
+        };
+        //Extend SVG.js with a pizza element
+        SVG.Pizza = SVG.invent({
+            inherit: SVG.Nested,
+            create: function() {
+                this.constructor.call(this,SVG.create('svg'));
+            },
+            extend : {
+                //Automatically called when setting an attribute
+                replot: function() {
+                    radPerImg = Math.radians(this.attr('angle'));
+                    offset = Math.radians(180);
+                    //begin coordinate of the circle
+                    beginX = Math.sin(offset);
+                    beginY = -Math.cos(offset);
+                    //end coorgenate of the circle
+                    endX = Math.sin(offset -radPerImg);
+                    endY = -Math.cos(offset -radPerImg);
+                    //The pizza point
+                    pointX = 0;
+                    pointY = 0;
+                    var path = this.remember('path');
+
+                    path.plot("M"+endX+" "+endY+" A 1 1,0 ,0,1, "
+                        +beginX+ " " + beginY + " L" + pointX +" " + pointY + "z");
+                    return this;
+                },
+                angle: function(angle) {
+                    return this.attr('angle',angle).replot();
+                }
+            },
+            construct: {
+                pizza: function(angle) {
+                    var r = this.put(new SVG.Pizza);
+                    r.attr({angle: new SVG.Number(angle)});
+                    r.viewbox(0,0,1,1);
+
+                    r.remember('path',r.path(''));
+                    r.replot();
+
+                    return r;
+                }
+            }
+        });
+
+        function AppViewModel() {
+            var self = this;
+            this.slices = ko.observable(8);
+            this.image = ko.observable('initial.jpg');
+            this.angleOffset = ko.observable(0);
+            this.zoom = ko.observable(1);
+            this.offsetX = ko.observable(0);
+            this.offsetY = ko.observable(0);
+
+            this.onBindingsApplied = function() {
+                this.circleView = new CircleView('circle',this.image());
+                this.circleView.slices(this.slices());
+
+                this.slices.subscribe(this.circleView.slices);
+                this.angleOffset.subscribe(this.circleView.angleOffset);
+
+                this.image.subscribe(this.circleView.image);
+
+                this.zoom.subscribe(this.circleView.zoom);
+
+                this.offsetX.subscribe(this.onOffsetChanged);
+                this.offsetY.subscribe(this.onOffsetChanged);
+                if(selectedAreaBlockEnabled) {
+                    this.selectedAreaView = new SelectedAreaView('selectedAreaWindow', this.image());
+                    this.image.subscribe(this.selectedAreaView.image);
+                    this.slices.subscribe(this.selectedAreaView.slices);
+                    this.zoom.subscribe(this.selectedAreaView.zoom);
+                    this.angleOffset.subscribe(this.selectedAreaView.angleOffset);
+                }
+
+            }
+
+            this.onOffsetChanged = function() {
+                var x = parseFloat(self.offsetX());
+                var y = parseFloat(self.offsetY());
+                if(selectedAreaBlockEnabled)
+                    self.selectedAreaView.offset(x,y);
+                self.circleView.offset(x,y);
+            }
+
+
+            this.onFileChosen = function(file) {
+                if(file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        self.image(e.target.result);
+                    }
+                    //todo: createObjectURL?
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            this.download = function() {
+                var blob = new Blob([self.circleView.export()],
+                                    {type:'image/svg+xml'});
+                saveAs(blob, "export.svg");
+            }
+        }
+
+        function SelectedAreaView(targetId, image) {
+            var self = this;
+            this.svg = SVG(targetId).size('100%','100%').viewbox(0,0,1,1);
+            this.imagePositionX = 0;
+            this.imagePositionY = 0;
+            this.zoom = 1;
+
+            this.background = this.svg.image(image)
+                .size(1,1)
+                .attr({preserveAspectRatio:'xMidYMid meet'});
+            this.background.filter(function(add) {
+                    //add.colorMatrix('saturate',0.10);
+                    //add.gaussianBlur(0.003,0.003);
+                    add.componentTransfer({rgb: {type:'table', tableValues: [1,0]}});
+                });
+
+            this.slice = this.svg.pizza(30)
+                .size(1,1)
+                .fill('#fff')
+                .translate(0,0)
+                .rotate(0,0,1);
+
+            window.slice = this.slice;
+
+            this.overlay = this.svg.image(image)
+                .size(1,1)
+                .attr({preserveAspectRatio:'xMidYMid meet'})
+                .maskWith(this.slice);
+            window.overlay = this.overlay;
+
+            this.slices = function(newSlices) {
+                self.slice.animate()
+                    .attr('angle', 360/newSlices)
+                    .during(self.slice.replot);
+            }
+
+
+            this.angleOffset = function(angleOffset) {
+                pointX = self.slice.trans.x;
+                pointY = self.slice.trans.y;
+                //self.slice.rotate(-angleOffset,pointX,pointY);
+                self.slice.transform({
+                    rotation: 100, cx: pointX, cy:pointY});
+            }
+
+            this.offset = function(offsetX,offsetY) {
+                self.slice.move(self.imagePositionX+offsetX,
+                                     self.imagePositionY+offsetY);
+            }
+
+            this.zoom = function(zoom) {
+                /*
+                self.svg.viewbox(0,0,1/zoom,1/zoom);
+                self.background.size(1/zoom,1/zoom);
+                self.overlay.size(1/zoom, 1/zoom);
+                self.currentZoom = zoom;
+                    self.slice.translate(self.imagePositionX/zoom,
+                                         self.imagePositionY/zoom)
+                        .rotate(0,self.imagePositionX/zoom,
+                                self.imagePositionY/zoom);
+                 */
+                self.slice.size(zoom,zoom);
+            }
+
+
+            this.image = function(newImage) {
+                var image = new Image();
+                image.onload = function(e) {
+                    self.background.load(newImage);
+                    self.overlay.load(newImage);
+                    var width = this.width;
+                    var height = this.height;
+                    if(height > width) {
+                        self.imagePositionY=0;
+                        self.imagePositionX= (height - width)/height /2;
+                    } else {
+                        self.imagePositionX=0;
+                        self.imagePositionY= (width - height)/width /2;
+                    }
+                    self.svg.circle(0.01,0.01).translate(self.imagePositionX,
+                                                    self.imagePositionY);
+//                    self.slice.move(self.imagePositionX, self.imagePositionY)
+//                        .rotate(0,self.imagePositionX, self.imagePositionY);
+
+                }
+                image.src = newImage;
+
+            }
+        }
+
+        function CircleView(targetId, image) {
+            var self = this;
+            this.svg = SVG(targetId).fixSubPixelOffset().viewbox(0,0,1,1);
+
+            //Circle as background
+            this.background = this.svg.circle(0.99).move(0.005,0.005).fill('#7f7f7f');
+
+            //Our image we use to fill the pizza shapes
+            this.fill = this.svg.image(image)
+                .size(1,1)
+                .attr({preserveAspectRatio:'xMinYMin meet'});
+
+            this.firstSlice = this.svg.pizza(1)
+                .size(0.5,0.5)
+                .move(0.5,0.5)
+                .fill(this.fill);
+
+            this.angleOffset = function(angleOffset) {
+                self.fill.animate().rotate(angleOffset,0,0);
+            }
+
+            this.offset = function(offsetX,offsetY) {
+                self.fill.animate().translate(-offsetX,-offsetY);
+            }
+
+            this.derivedSlices = [];
+
+            this.slices = function(newSlices) {
+                var anglePerSlice = 360/newSlices;
+                var anim = self.firstSlice.animate()
+                //1.05 for some overlap to prevent grey lines between slices
+                    .attr('angle', anglePerSlice*1.05)
+                    .during(self.firstSlice.replot);
+
+                for(i=1; i < newSlices; i++) {
+                    if(self.derivedSlices[i] === undefined) {
+                        self.derivedSlices[i] = self.svg.use(self.firstSlice)
+                            //New slices on the background
+                            //Somehow the .after(self.background) does not work
+                            .back()
+                            .rotate(360,0.5,0.5);
+                    }
+                    self.derivedSlices[i].animate().rotate(i*anglePerSlice,0.5,0.5);
+                }
+
+                self.background.back();
+
+                anim.after(function() {
+                    for(i=newSlices; i < self.derivedSlices.length; i++){
+                        self.derivedSlices[i].remove();
+                    }
+                    self.derivedSlices.splice(newSlices, self.derivedSlices.length - newSlices);
+                });
+            }
+            this.zoom = function(zoom) {
+                self.fill.animate().scale(1/zoom,1/zoom);
+            }
+
+            this.export = function() {
+                return self.svg.exportSvg();
+            }
+
+            this.image = function(newImage) {
+                self.fill.load(newImage);
+            }
+        }
+
+        var vm = new AppViewModel();
+        ko.applyBindings(vm);
+        vm.onBindingsApplied();
+    </script>
+</body>
+</html>
