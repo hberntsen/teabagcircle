@@ -43,7 +43,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>&nbsp;</h1>
+        <h1>Karen's theezakjes circel</h1>
         <div class="row">
             <div id="circle" class="col-sm-9"></div>
             <div class="col-sm-3">
@@ -88,7 +88,13 @@
                 <div class="sidebar-module">
                     <button type="button" class="btn btn-default btn-block" data-bind="click: download">
                         <span class="glyphicon glyphicon-download"></span>
-                        &nbsp;Download as SVG
+                        &nbsp;Download circle<br>as SVG
+                    </button>
+                </div>
+                <div class="sidebar-module">
+                    <button type="button" class="btn btn-default btn-block" data-bind="click: download2">
+                        <span class="glyphicon glyphicon-download"></span>
+                        &nbsp;Download selected<br>area as SVG
                     </button>
                 </div>
             </div>
@@ -96,7 +102,7 @@
     </div>
 
     <script type="text/javascript">
-        var selectedAreaBlockEnabled = false;
+        var selectedAreaBlockEnabled = true;
 
         if(!selectedAreaBlockEnabled)
             $("#selectedAreaBlock").hide();
@@ -210,14 +216,25 @@
                                     {type:'image/svg+xml'});
                 saveAs(blob, "export.svg");
             }
+
+            this.download2 = function() {
+                var blob2 = new Blob([self.selectedAreaView.export()],
+                                    {type:'image/svg+xml'});
+                saveAs(blob2, "export.svg");
+            }
         }
 
         function SelectedAreaView(targetId, image) {
             var self = this;
             this.svg = SVG(targetId).size('100%','100%').viewbox(0,0,1,1);
+            //Offsets where the image really starts
             this.imagePositionX = 0;
             this.imagePositionY = 0;
             this.zoom = 1;
+            // User entered offsets
+            this.offsetX=0;
+            this.offsetY=0;
+            this.angleOffset=0;
 
             this.background = this.svg.image(image)
                 .size(1,1)
@@ -250,16 +267,24 @@
 
 
             this.angleOffset = function(angleOffset) {
-                pointX = self.slice.trans.x;
-                pointY = self.slice.trans.y;
-                //self.slice.rotate(-angleOffset,pointX,pointY);
-                self.slice.transform({
-                    rotation: 100, cx: pointX, cy:pointY});
+            self.angleOffset=angleOffset;
+            self.slice.translate(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+            self.slice.rotate(-angleOffset,self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
             }
 
             this.offset = function(offsetX,offsetY) {
-                self.slice.move(self.imagePositionX+offsetX,
-                                     self.imagePositionY+offsetY);
+                self.offsetX=offsetX;
+                self.offsetY=offsetY;
+                self.repositionSlice2();
+            }
+
+            this.repositionSlice2 = function() {
+                self.slice.rotate(-1*self.angleOffset,self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+                self.slice.translate(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+            }
+
+            this.repositionSlice = function() {
+                self.slice.translate(self.offsetX+self.imagePositionX, self.offsetY+self.imagePositionY);
             }
 
             this.zoom = function(zoom) {
@@ -291,21 +316,20 @@
                         self.imagePositionX=0;
                         self.imagePositionY= (width - height)/width /2;
                     }
-                    self.svg.circle(0.01,0.01).translate(self.imagePositionX,
-                                                    self.imagePositionY);
-//                    self.slice.move(self.imagePositionX, self.imagePositionY)
-//                        .rotate(0,self.imagePositionX, self.imagePositionY);
-
+                    self.repositionSlice();
                 }
                 image.src = newImage;
 
+            }
+
+            this.export = function() {
+                return self.svg.exportSvg();
             }
         }
 
         function CircleView(targetId, image) {
             var self = this;
             this.svg = SVG(targetId).fixSubPixelOffset().viewbox(0,0,1,1);
-
             //Circle as background
             this.background = this.svg.circle(0.99).move(0.005,0.005).fill('#7f7f7f');
 
