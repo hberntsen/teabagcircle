@@ -185,7 +185,6 @@
                     this.selectedAreaView = new SelectedAreaView('selectedAreaWindow', this.image());
                     this.image.subscribe(this.selectedAreaView.image);
                     this.slices.subscribe(this.selectedAreaView.slices);
-                    this.zoom.subscribe(this.selectedAreaView.zoom);
                     this.angleOffset.subscribe(this.selectedAreaView.angleOffset);
                 }
 
@@ -287,21 +286,6 @@
                 self.slice.translate(self.offsetX+self.imagePositionX, self.offsetY+self.imagePositionY);
             }
 
-            this.zoom = function(zoom) {
-                /*
-                self.svg.viewbox(0,0,1/zoom,1/zoom);
-                self.background.size(1/zoom,1/zoom);
-                self.overlay.size(1/zoom, 1/zoom);
-                self.currentZoom = zoom;
-                    self.slice.translate(self.imagePositionX/zoom,
-                                         self.imagePositionY/zoom)
-                        .rotate(0,self.imagePositionX/zoom,
-                                self.imagePositionY/zoom);
-                 */
-                self.slice.size(zoom,zoom);
-            }
-
-
             this.image = function(newImage) {
                 var image = new Image();
                 image.onload = function(e) {
@@ -380,8 +364,9 @@
                     self.derivedSlices.splice(newSlices, self.derivedSlices.length - newSlices);
                 });
             }
+
             this.zoom = function(zoom) {
-                self.fill.animate().scale(1/zoom,1/zoom);
+                self.firstSlice.size(zoom/2,zoom/2);
             }
 
             this.export = function() {
