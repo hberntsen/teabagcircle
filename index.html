@@ -143,6 +143,9 @@
                 },
                 angle: function(angle) {
                     return this.attr('angle',angle).replot();
+                },
+                rotatePath: function(degrees, cx, cy) {
+                    return this.remember('path').rotate(degrees, cx, cy);
                 }
             },
             construct: {
@@ -246,17 +249,12 @@
 
             this.slice = this.svg.pizza(30)
                 .size(1,1)
-                .fill('#fff')
-                .translate(0,0)
-                .rotate(0,0,1);
-
-            window.slice = this.slice;
+                .fill('#fff');
 
             this.overlay = this.svg.image(image)
                 .size(1,1)
                 .attr({preserveAspectRatio:'xMidYMid meet'})
                 .maskWith(this.slice);
-            window.overlay = this.overlay;
 
             this.slices = function(newSlices) {
                 self.slice.animate()
@@ -264,26 +262,19 @@
                     .during(self.slice.replot);
             }
 
-
             this.angleOffset = function(angleOffset) {
-            self.angleOffset=angleOffset;
-            self.slice.translate(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
-            self.slice.rotate(-angleOffset,self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+                self.angleOffset=angleOffset;
+                self.slice.rotatePath(-angleOffset,0,0);
             }
 
             this.offset = function(offsetX,offsetY) {
                 self.offsetX=offsetX;
                 self.offsetY=offsetY;
-                self.repositionSlice2();
-            }
-
-            this.repositionSlice2 = function() {
-                self.slice.rotate(-1*self.angleOffset,self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
-                self.slice.translate(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+                self.repositionSlice();
             }
 
             this.repositionSlice = function() {
-                self.slice.translate(self.offsetX+self.imagePositionX, self.offsetY+self.imagePositionY);
+                self.slice.move(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
             }
 
             this.image = function(newImage) {
