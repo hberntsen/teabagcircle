@@ -320,11 +320,11 @@
                 .fill(this.fill);
 
             this.angleOffset = function(angleOffset) {
-                self.fill.animate().rotate(angleOffset,0,0);
+                self.fill.rotate(angleOffset,0,0);
             }
 
             this.offset = function(offsetX,offsetY) {
-                self.fill.animate().translate(-offsetX,-offsetY);
+                self.fill.translate(-offsetX,-offsetY);
             }
 
             this.derivedSlices = [];
