@@ -187,6 +187,8 @@
                 this.offsetY.subscribe(this.onOffsetChanged);
                 if(selectedAreaBlockEnabled) {
                     this.selectedAreaView = new SelectedAreaView('selectedAreaWindow', this.image());
+                    this.selectedAreaView.slices(this.slices());
+
                     this.image.subscribe(this.selectedAreaView.image);
                     this.slices.subscribe(this.selectedAreaView.slices);
                     this.angleOffset.subscribe(this.selectedAreaView.angleOffset);
@@ -298,6 +300,7 @@
                 image.src = newImage;
 
             }
+            this.image(image);
 
             this.export = function() {
                 return self.svg.exportSvg();
