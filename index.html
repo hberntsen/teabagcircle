@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title></title>
     <script type="text/javascript" src="svg.js"></script>
-    <script type="text/javascript" src="svg.export.js"></script>
     <script type="text/javascript" src="svg.filter.js"></script>
     <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bootstrap/css/bootstrap-theme.css" rel="stylesheet">
@@ -219,13 +218,13 @@
             this.download = function() {
                 var blob = new Blob([self.circleView.export()],
                                     {type:'image/svg+xml'});
-                saveAs(blob, "export.svg");
+                saveAs(blob, "circle.svg");
             }
 
             this.download2 = function() {
                 var blob2 = new Blob([self.selectedAreaView.export()],
                                     {type:'image/svg+xml'});
-                saveAs(blob2, "export.svg");
+                saveAs(blob2, "selected-area.svg");
             }
         }
 
@@ -303,7 +302,7 @@
             this.image(image);
 
             this.export = function() {
-                return self.svg.exportSvg();
+                return self.svg.svg();
             }
         }
 
@@ -375,7 +374,7 @@
             }
 
             this.export = function() {
-                return self.svg.exportSvg();
+                return self.svg.svg();
             }
 
             this.image = function(newImage) {
