@@ -146,7 +146,7 @@
                     return this.attr('angle',angle).replot();
                 },
                 rotatePath: function(degrees, cx, cy) {
-                    return this.remember('path').rotate(degrees, cx, cy);
+                    return this.transform({rotation: degrees, cx, cy});
                 }
             },
             construct: {
@@ -235,9 +235,9 @@
             this.imagePositionY = 0;
             this.zoom = 1;
             // User entered offsets
-            this.offsetX=0;
-            this.offsetY=0;
-            this.angleOffset=0;
+            this._offsetX=0;
+            this._offsetY=0;
+            this._angleOffset=0;
 
             this.background = this.svg.image(image)
                 .size(1,1)
@@ -258,24 +258,25 @@
                 .maskWith(this.slice);
 
             this.slices = function(newSlices) {
-                self.slice.animate()
-                    .attr('angle', 360/newSlices)
-                    .during(self.slice.replot);
+                self.slice.attr('angle', 360/newSlices).replot();
             }
 
             this.angleOffset = function(angleOffset) {
-                self.angleOffset=angleOffset;
-                self.slice.rotatePath(-angleOffset,0,0);
+                self._angleOffset=angleOffset;
+                self.repositionSlice();
             }
 
             this.offset = function(offsetX,offsetY) {
-                self.offsetX=offsetX;
-                self.offsetY=offsetY;
+                self._offsetX=offsetX;
+                self._offsetY=offsetY;
                 self.repositionSlice();
             }
 
             this.repositionSlice = function() {
-                self.slice.move(self.offsetX+self.imagePositionX,self.offsetY+self.imagePositionY);
+                let m = new SVG.Matrix;
+                m = m.translate(self._offsetX+self.imagePositionX, self._offsetY+self.imagePositionY);
+                m = m.rotate(-self._angleOffset,0,0);
+                self.slice.transform(m);
             }
 
             this.image = function(newImage) {
@@ -308,6 +309,9 @@
             this.svg = SVG(targetId).spof().viewbox(0,0,1,1);
             //Circle as background
             this.background = this.svg.circle(0.99).move(0.005,0.005).fill('#7f7f7f');
+            this._angleOffset = 0;
+            this._offsetX = 0;
+            this._offsetY = 0;
 
             //Our image we use to fill the pizza shapes
             this.fill = this.svg.image(image)
@@ -320,21 +324,29 @@
                 .fill(this.fill);
 
             this.angleOffset = function(angleOffset) {
-                self.fill.rotate(angleOffset,0,0);
+                self._angleOffset = angleOffset;
+                self._applyTransform();
             }
 
             this.offset = function(offsetX,offsetY) {
-                self.fill.translate(-offsetX,-offsetY);
+                self._offsetX = offsetX;
+                self._offsetY = offsetY;
+                self._applyTransform();
+            }
+
+            this._applyTransform = function() {
+                let m = new SVG.Matrix;
+                m = m.rotate(self._angleOffset,0,0);
+                m = m.translate(-self._offsetX, -self._offsetY);
+                self.fill.transform(m);
             }
 
             this.derivedSlices = [];
 
             this.slices = function(newSlices) {
                 var anglePerSlice = 360/newSlices;
-                var anim = self.firstSlice.animate()
-                //1.05 for some overlap to prevent grey lines between slices
-                    .attr('angle', anglePerSlice*1.05)
-                    .during(self.firstSlice.replot);
+                //1.005 for some overlap to prevent grey lines between slices
+                self.firstSlice.attr('angle', anglePerSlice*1.005).replot();
 
                 for(i=1; i < newSlices; i++) {
                     if(self.derivedSlices[i] === undefined) {
@@ -344,17 +356,15 @@
                             .back()
                             .rotate(360,0.5,0.5);
                     }
-                    self.derivedSlices[i].animate().rotate(i*anglePerSlice,0.5,0.5);
+                    self.derivedSlices[i].rotate(i*anglePerSlice,0.5,0.5);
                 }
 
                 self.background.back();
 
-                anim.after(function() {
-                    for(i=newSlices; i < self.derivedSlices.length; i++){
-                        self.derivedSlices[i].remove();
-                    }
-                    self.derivedSlices.splice(newSlices, self.derivedSlices.length - newSlices);
-                });
+                for(i=newSlices; i < self.derivedSlices.length; i++){
+                    self.derivedSlices[i].remove();
+                }
+                self.derivedSlices.splice(newSlices, self.derivedSlices.length - newSlices);
             }
 
             this.zoom = function(zoom) {
