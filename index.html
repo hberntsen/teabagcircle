@@ -191,6 +191,32 @@
                     this.image.subscribe(this.selectedAreaView.image);
                     this.slices.subscribe(this.selectedAreaView.slices);
                     this.angleOffset.subscribe(this.selectedAreaView.angleOffset);
+
+                    let isDragging = false;
+                    let x = 0;
+                    let y = 0;
+                    this.selectedAreaView.svg.node.style.cursor = 'grab';
+
+                    this.selectedAreaView.svg.on('mousedown', e => {
+                        isDragging = true;
+                        x = e.pageX;
+                        y = e.pageY;
+                        e.preventDefault();
+                    });
+                    SVG.on(window, 'mousemove', e => {
+                        if(isDragging) {
+                            const {width, height} = self.selectedAreaView.svg.node.getBoundingClientRect();
+                            dx = e.pageX - x;
+                            dy = e.pageY - y;
+                            self.offsetX(self.offsetX() + dx/width);
+                            self.offsetY(self.offsetY() + dy/height);
+                            x = e.pageX;
+                            y = e.pageY;
+                        }
+                    });
+                    SVG.on(window, 'mouseup', e => {
+                        isDragging = false;
+                    });
                 }
 
             }
